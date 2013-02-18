@@ -1,5 +1,7 @@
-﻿using System;
+﻿using QwikShot.WinApp.Sharing;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -25,6 +27,8 @@ namespace QwikShot.WinApp
 
         private Rectangle screenPositionBounds = Rectangle.Empty;
 
+        private string imgurLink;
+
         // Image references
         private Bitmap desktopCapture;
 
@@ -35,6 +39,9 @@ namespace QwikShot.WinApp
 
             // figure out the size of all potential monitors combined
             InitializeComponent();
+
+            //imgur.AuthorizePin("");
+            //imgur.GetAuthToken("e1c63da25f4eb996723b4709490c423abe193600");
         }
 
         private void CalculateAndResizeToScreenSize()
@@ -59,6 +66,7 @@ namespace QwikShot.WinApp
             systemTrayMenu = new ContextMenu();
             systemTrayMenu.MenuItems.Add("Exit", OnExit);
             systemTrayIcon = new NotifyIcon(this.components);
+            systemTrayIcon.BalloonTipClicked += systemTrayIcon_BalloonTipClicked;
 
             // set up system tray icon
             systemTrayIcon.ContextMenu = this.systemTrayMenu;
@@ -71,12 +79,11 @@ namespace QwikShot.WinApp
             WindowState = FormWindowState.Normal;
             Cursor = System.Windows.Forms.Cursors.Cross;
             Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
-
-            // allow the form to start on a monitor that isn't the main screen
-            StartPosition = FormStartPosition.Manual;
+            
 
             // set up the overlay for holding and resizing the screenshot
             screenshotOverlay = new ScreenShotRegionOverlay(this);
+            screenshotOverlay.RegionCaptured += screenshotOverlay_RegionCaptured;
 
             // add overlay to the form
             Controls.Add(screenshotOverlay);
@@ -87,8 +94,47 @@ namespace QwikShot.WinApp
             ResumeLayout(false);
         }
 
+        void systemTrayIcon_BalloonTipClicked(object sender, EventArgs e)
+        {
+            if (!String.IsNullOrWhiteSpace(imgurLink))
+            {
+                ProcessStartInfo sInfo = new ProcessStartInfo(imgurLink);
+                Process.Start(sInfo);
+            }
+        }
+
+        void screenshotOverlay_RegionCaptured(object sender, RegionCapturedEventArgs e)
+        {
+            Imgur imgur = new Imgur();
+
+            CancelCapture();
+
+            var response = imgur.UploadImage(GetImageFromScreenshotByBounds(e.Bounds));
+
+            //var deserialized = DynamicJson.Deserialize(response);
+            //var deserialized = JsonObject.Parse(response);
+
+            //imgurLink = deserialized.Object("data").Get("link");
+
+            var search = "link\":\"";
+            int position = response.IndexOf(search);
+
+            response = response.Substring(position + search.Length);
+            
+            position = response.IndexOf("\"}");
+
+            imgurLink = response.Substring(0, position).Replace("\\", "");            
+
+            systemTrayIcon.ShowBalloonTip(1000, "Screenshot Uploaded", String.Format("Screenshot uploaded to imgur.\n Url: {0} copied to clipboard.", imgurLink), ToolTipIcon.Info);
+
+            Clipboard.SetText(imgurLink);
+        }
+
         private void ResizeToBounds(Rectangle screenBounds)
         {
+            // allow the form to start on a monitor that isn't the main screen
+            StartPosition = FormStartPosition.Manual;
+
             Width = screenBounds.Width;
             Height = screenBounds.Height;
             Left = screenBounds.X;
@@ -109,13 +155,20 @@ namespace QwikShot.WinApp
             }
             // save just the specified bounds
             else
-                SaveBounds(captureBounds);
+                GetImageFromScreenshotByBounds(captureBounds);
             // do something with it
         }
 
-        private void SaveBounds(Rectangle captureBounds)
+        private Bitmap GetImageFromScreenshotByBounds(Rectangle captureBounds)
         {
+            var image = new Bitmap(captureBounds.Width, captureBounds.Height);
 
+            using (Graphics gfx = Graphics.FromImage(image))
+            {
+                gfx.DrawImage(desktopCapture, 0,0, captureBounds, GraphicsUnit.Pixel);
+            }
+
+            return image;
         }
 
         internal void MakeActive()
@@ -135,6 +188,8 @@ namespace QwikShot.WinApp
         {
             if (e.KeyCode == Keys.Escape)
                 CancelCapture();
+            if (e.KeyCode == Keys.Enter)
+                screenshotOverlay.FinishCapture();
         }
 
         void GlobalKeyHook_KeyPress(object sender, EventArgs e)

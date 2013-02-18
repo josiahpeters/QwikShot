@@ -1,4 +1,5 @@
-﻿using System;
+﻿using QwikShot.WinApp.Sharing;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -8,9 +9,19 @@ using System.Windows.Forms;
 
 namespace QwikShot.WinApp
 {
+    public class RegionCapturedEventArgs
+    {
+        public Rectangle Bounds { get; set; }
+    }
     public class ScreenShotRegionOverlay : PictureBox
     {
+        public delegate void RegionEventHandler(object sender, RegionCapturedEventArgs e);
+        public event RegionEventHandler RegionCaptured;
+
+        private Label instructions;
+
         private ToolStrip toolStrip;
+        private Point toolStripOffset = new Point(0, 24);
 
         private ToolStripButton buttonSave;
         private ToolStripButton buttonCopy;
@@ -30,12 +41,13 @@ namespace QwikShot.WinApp
         // style for region drawing border
         private Pen regionBorderPen;
 
+
         public ScreenShotRegionOverlay(AppMain appMain)
         {
             this.appMain = appMain;
             InitializeComponent();
         }
-        
+
         private void InitializeComponent()
         {
             #region Creating and styling form controls
@@ -49,6 +61,9 @@ namespace QwikShot.WinApp
             toolStrip.BackColor = Color.Transparent;
             toolStrip.GripStyle = ToolStripGripStyle.Hidden;
             toolStrip.Renderer = new CustomToolStripRenderer();
+            toolStrip.AutoSize = true;
+
+            //toolStrip.Width = 500;
             toolStrip.SuspendLayout();
             toolStrip.Visible = false;
 
@@ -102,13 +117,25 @@ namespace QwikShot.WinApp
             separator2.AutoSize = false;
             separator2.Size = new Size(48, 0);
 
-            toolStrip.Items.AddRange(new ToolStripItem[] { buttonSave, buttonCopy, separator1, buttonNetwork, buttonInternet, separator2, buttonClose });
-
             toolStrip.ResumeLayout(false);
 
-            this.Controls.Add(toolStrip); 
+            toolStrip.Items.AddRange(new ToolStripItem[] { buttonSave, buttonCopy, separator1, buttonNetwork, buttonInternet, separator2, buttonClose });
 
-            #endregion
+            this.Controls.Add(toolStrip);
+
+            instructions = new Label();
+            instructions.Text = "Press Enter to upload region to imgur.";
+            instructions.Font = new Font(instructions.Font.FontFamily, 12, FontStyle.Regular);
+            instructions.ForeColor = Color.FromArgb(64, 64, 64);
+
+            instructions.BackColor = Color.Transparent;
+            instructions.AutoSize = true;
+
+            this.Controls.Add(instructions);            
+
+            this.ResumeLayout(false);
+
+            #endregion            
 
             regionBorderPen = new Pen(Color.FromArgb(100, 149, 237), 1);
             regionBorderPen.DashStyle = DashStyle.Solid;
@@ -129,6 +156,16 @@ namespace QwikShot.WinApp
                 g.DrawImage(desktopCapture, captureRegion, captureRegion, GraphicsUnit.Pixel);
                 g.DrawRectangle(regionBorderPen, captureRegion);
             }
+
+            //toolStrip.Left = captureRegion.X + toolStripOffset.X;
+            //toolStrip.Top = captureRegion.Y - toolStripOffset.Y;
+            instructions.Visible = true;
+
+            instructions.Left = captureRegion.X + toolStripOffset.X;
+            instructions.Top = captureRegion.Y - toolStripOffset.Y;
+
+            //toolStrip.Visible = true;
+
         }
 
         private void CalculateCaptureRegion()
@@ -193,36 +230,31 @@ namespace QwikShot.WinApp
                 endPoint = e.Location;
                 DrawCaptureRegion();
             }
-
         }
-        
+
         #endregion
 
         #region toolbar button even handlers
 
         void buttonClose_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
         }
 
         void buttonInternet_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
+            FinishCapture();
         }
 
         void buttonNetwork_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
         }
 
         void buttonCopy_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
         }
 
         void buttonSave_Click(object sender, EventArgs e)
         {
-            throw new NotImplementedException();
         }
 
         internal void ResizeToBounds(Rectangle screenBounds)
@@ -234,6 +266,15 @@ namespace QwikShot.WinApp
         }
 
         #endregion
+
+        internal void FinishCapture()
+        {
+            if (RegionCaptured != null)
+            {
+                RegionCaptured(this, new RegionCapturedEventArgs { Bounds = captureRegion });
+            }
+            instructions.Visible = false;
+        }
 
         internal void CaptureRegion(Bitmap desktopCapture)
         {
