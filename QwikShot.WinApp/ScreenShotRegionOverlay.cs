@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -18,8 +19,16 @@ namespace QwikShot.WinApp
         private ToolStripButton buttonClose;
 
         private Bitmap fadedDesktopCapture;
+        private Bitmap desktopCapture;
 
         private AppMain appMain;
+
+        private bool dragging = false;
+        private Point startPoint;
+        private Point endPoint;
+        private Rectangle captureRegion = Rectangle.Empty;
+        // style for region drawing border
+        private Pen regionBorderPen;
 
         public ScreenShotRegionOverlay(AppMain appMain)
         {
@@ -100,7 +109,94 @@ namespace QwikShot.WinApp
             this.Controls.Add(toolStrip); 
 
             #endregion
+
+            regionBorderPen = new Pen(Color.FromArgb(100, 149, 237), 1);
+            regionBorderPen.DashStyle = DashStyle.Solid;
+
+            MouseMove += ScreenShotRegionOverlay_MouseMove;
+            MouseDown += ScreenShotRegionOverlay_MouseDown;
+            MouseUp += ScreenShotRegionOverlay_MouseUp;
         }
+
+        private void DrawCaptureRegion()
+        {
+            CalculateCaptureRegion();
+
+            this.Refresh();
+
+            using (var g = this.CreateGraphics())
+            {
+                g.DrawImage(desktopCapture, captureRegion, captureRegion, GraphicsUnit.Pixel);
+                g.DrawRectangle(regionBorderPen, captureRegion);
+            }
+        }
+
+        private void CalculateCaptureRegion()
+        {
+            int x = 0;
+            int y = 0;
+
+            int width = 0;
+            int height = 0;
+
+            // calculate our drawing box size regardless of the direction you are dragging
+            if (startPoint.X > endPoint.X)
+            {
+                x = endPoint.X;
+                width = startPoint.X - endPoint.X;
+            }
+            else
+            {
+                x = startPoint.X;
+                width = endPoint.X - startPoint.X;
+            }
+
+            if (startPoint.Y > endPoint.Y)
+            {
+                y = endPoint.Y;
+                height = startPoint.Y - endPoint.Y;
+            }
+            else
+            {
+                y = startPoint.Y;
+                height = endPoint.Y - startPoint.Y;
+            }
+
+            captureRegion = new Rectangle(x, y, width, height);
+        }
+
+        #region Mouse Events for region drawing
+
+        void ScreenShotRegionOverlay_MouseUp(object sender, MouseEventArgs e)
+        {
+            // end point
+            endPoint = e.Location;
+            // stop dragging
+            dragging = false;
+
+            DrawCaptureRegion();
+        }
+
+        void ScreenShotRegionOverlay_MouseDown(object sender, MouseEventArgs e)
+        {
+            // start point
+            startPoint = e.Location;
+            // start dragging
+            dragging = true;
+        }
+
+        void ScreenShotRegionOverlay_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (dragging)
+            {
+                // draw draggable area
+                endPoint = e.Location;
+                DrawCaptureRegion();
+            }
+
+        }
+        
+        #endregion
 
         #region toolbar button even handlers
 
@@ -141,7 +237,7 @@ namespace QwikShot.WinApp
 
         internal void CaptureRegion(Bitmap desktopCapture)
         {
-
+            this.desktopCapture = desktopCapture;
             fadedDesktopCapture = new Bitmap(desktopCapture, desktopCapture.Width, desktopCapture.Height);
 
             using (Graphics gfx = Graphics.FromImage(fadedDesktopCapture))

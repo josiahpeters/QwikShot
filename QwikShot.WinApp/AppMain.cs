@@ -36,6 +36,7 @@ namespace QwikShot.WinApp
             // figure out the size of all potential monitors combined
             InitializeComponent();
         }
+
         private void CalculateAndResizeToScreenSize()
         {
             // calculate the total desktop size for all monitors
@@ -46,50 +47,52 @@ namespace QwikShot.WinApp
             // resize overlay to fit max screen size
             screenshotOverlay.ResizeToBounds(screenPositionBounds);
         }
+
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            components = new System.ComponentModel.Container();
 
-            this.KeyDown += AppMain_KeyDown;
+            KeyDown += AppMain_KeyDown;
 
-            this.SuspendLayout();
+            SuspendLayout();
 
-            this.systemTrayMenu = new ContextMenu();
-            this.systemTrayIcon = new NotifyIcon(this.components);
+            systemTrayMenu = new ContextMenu();
+            systemTrayMenu.MenuItems.Add("Exit", OnExit);
+            systemTrayIcon = new NotifyIcon(this.components);
 
             // set up system tray icon
-            this.systemTrayIcon.ContextMenu = this.systemTrayMenu;
-            this.systemTrayIcon.Text = "QwikShot";
-            this.systemTrayIcon.Visible = true;
-            this.systemTrayIcon.Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
+            systemTrayIcon.ContextMenu = this.systemTrayMenu;
+            systemTrayIcon.Text = "QwikShot";
+            systemTrayIcon.Visible = true;
+            systemTrayIcon.Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
 
             // set up form styles
-            this.FormBorderStyle = FormBorderStyle.None;
-            this.WindowState = FormWindowState.Normal;
-            this.Cursor = System.Windows.Forms.Cursors.Cross;
-            this.Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
+            FormBorderStyle = FormBorderStyle.None;
+            WindowState = FormWindowState.Normal;
+            Cursor = System.Windows.Forms.Cursors.Cross;
+            Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
 
             // allow the form to start on a monitor that isn't the main screen
-            this.StartPosition = FormStartPosition.Manual;
+            StartPosition = FormStartPosition.Manual;
 
             // set up the overlay for holding and resizing the screenshot
             screenshotOverlay = new ScreenShotRegionOverlay(this);
 
             // add overlay to the form
-            this.Controls.Add(screenshotOverlay);
+            Controls.Add(screenshotOverlay);
 
             // resize form and resize overlay to take up entire desktop
             CalculateAndResizeToScreenSize();
 
-            this.ResumeLayout(false);
+            ResumeLayout(false);
         }
 
         private void ResizeToBounds(Rectangle screenBounds)
         {
-            this.Width = screenBounds.Width;
-            this.Height = screenBounds.Height;
-            this.Left = screenBounds.X;
-            this.Top = screenBounds.Y;
+            Width = screenBounds.Width;
+            Height = screenBounds.Height;
+            Left = screenBounds.X;
+            Top = screenBounds.Y;
         }
 
         private void CaptureScreenshot(Rectangle captureBounds)
@@ -126,6 +129,24 @@ namespace QwikShot.WinApp
             this.Visible = false;
         }
 
+        #region Form Event Handlers
+
+        private void AppMain_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+                CancelCapture();
+        }
+
+        void GlobalKeyHook_KeyPress(object sender, EventArgs e)
+        {
+            //throw new NotImplementedException();
+            CaptureScreenshot(screenPositionBounds);
+        }
+
+        #endregion
+
+        #region Event Override Methods
+
         protected override void OnLoad(EventArgs e)
         {
             // Hide form window
@@ -140,16 +161,24 @@ namespace QwikShot.WinApp
             base.OnLoad(e);
         }
 
-        private void AppMain_KeyDown(object sender, KeyEventArgs e)
+
+
+        private void OnExit(object sender, EventArgs e)
         {
-            if (e.KeyCode == Keys.Escape)
-                CancelCapture();
+            Application.Exit();
+            GlobalKeyHook.Unhook();
         }
 
-        void GlobalKeyHook_KeyPress(object sender, EventArgs e)
+        protected override void Dispose(bool isDisposing)
         {
-            //throw new NotImplementedException();
-            CaptureScreenshot(screenPositionBounds);
-        }
+            if (isDisposing)
+            {
+                // Release the icon resource.
+                systemTrayIcon.Dispose();
+            }
+            base.Dispose(isDisposing);
+        } 
+
+        #endregion
     }
 }
