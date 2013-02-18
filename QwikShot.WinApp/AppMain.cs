@@ -1,11 +1,14 @@
 ﻿using QwikShot.WinApp.Sharing;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
+using System.Windows.Threading;
 
 namespace QwikShot.WinApp
 {
@@ -18,6 +21,8 @@ namespace QwikShot.WinApp
             Application.Run(new AppMain());
             //Application.Run(new Settings());
         }
+
+        delegate void SetClipboardText(string text);
 
         private NotifyIcon systemTrayIcon;
         private System.ComponentModel.IContainer components;
@@ -79,7 +84,7 @@ namespace QwikShot.WinApp
             WindowState = FormWindowState.Normal;
             Cursor = System.Windows.Forms.Cursors.Cross;
             Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
-            
+
 
             // set up the overlay for holding and resizing the screenshot
             screenshotOverlay = new ScreenShotRegionOverlay(this);
@@ -105,29 +110,48 @@ namespace QwikShot.WinApp
 
         void screenshotOverlay_RegionCaptured(object sender, RegionCapturedEventArgs e)
         {
-            Imgur imgur = new Imgur();
 
             CancelCapture();
 
-            var response = imgur.UploadImage(GetImageFromScreenshotByBounds(e.Bounds));
+            var screenshot = GetImageFromScreenshotByBounds(e.Bounds);
+
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.DoWork += bw_DoWork;
+            bw.RunWorkerCompleted += bw_RunWorkerCompleted;
+            bw.RunWorkerAsync(screenshot);
 
             //var deserialized = DynamicJson.Deserialize(response);
             //var deserialized = JsonObject.Parse(response);
 
             //imgurLink = deserialized.Object("data").Get("link");
 
+
+        }
+
+        void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            imgurLink = e.Result.ToString();
+
+            systemTrayIcon.ShowBalloonTip(1000, "Screenshot Uploaded", String.Format("Screenshot uploaded to imgur.\n Url: {0} copied to clipboard.", imgurLink), ToolTipIcon.Info);
+            Clipboard.SetText(imgurLink);
+
+        }
+
+        void bw_DoWork(object sender, DoWorkEventArgs e)
+        {
+            Imgur imgur = new Imgur();
+            var response = imgur.UploadImage((Bitmap)e.Argument);
+
             var search = "link\":\"";
             int position = response.IndexOf(search);
 
             response = response.Substring(position + search.Length);
-            
+
             position = response.IndexOf("\"}");
 
-            imgurLink = response.Substring(0, position).Replace("\\", "");            
+            imgurLink = response.Substring(0, position).Replace("\\", "");
 
-            systemTrayIcon.ShowBalloonTip(1000, "Screenshot Uploaded", String.Format("Screenshot uploaded to imgur.\n Url: {0} copied to clipboard.", imgurLink), ToolTipIcon.Info);
-
-            Clipboard.SetText(imgurLink);
+            e.Result = imgurLink;
         }
 
         private void ResizeToBounds(Rectangle screenBounds)
@@ -165,7 +189,7 @@ namespace QwikShot.WinApp
 
             using (Graphics gfx = Graphics.FromImage(image))
             {
-                gfx.DrawImage(desktopCapture, 0,0, captureBounds, GraphicsUnit.Pixel);
+                gfx.DrawImage(desktopCapture, 0, 0, captureBounds, GraphicsUnit.Pixel);
             }
 
             return image;
@@ -174,12 +198,15 @@ namespace QwikShot.WinApp
         internal void MakeActive()
         {
             this.Visible = true;
+            this.Activate();
+            //ScreenHelper.ActivateApplication("QwikShot");
             this.Focus();
         }
 
         private void CancelCapture()
         {
             this.Visible = false;
+            screenshotOverlay.Cancel();
         }
 
         #region Form Event Handlers
@@ -232,7 +259,7 @@ namespace QwikShot.WinApp
                 systemTrayIcon.Dispose();
             }
             base.Dispose(isDisposing);
-        } 
+        }
 
         #endregion
     }

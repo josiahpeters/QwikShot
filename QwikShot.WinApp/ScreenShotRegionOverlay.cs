@@ -159,10 +159,10 @@ namespace QwikShot.WinApp
 
             //toolStrip.Left = captureRegion.X + toolStripOffset.X;
             //toolStrip.Top = captureRegion.Y - toolStripOffset.Y;
-            instructions.Visible = true;
 
             instructions.Left = captureRegion.X + toolStripOffset.X;
             instructions.Top = captureRegion.Y - toolStripOffset.Y;
+            instructions.Visible = true;
 
             //toolStrip.Visible = true;
 
@@ -290,6 +290,12 @@ namespace QwikShot.WinApp
 
 
             appMain.MakeActive();
+        }
+
+        internal void Cancel()
+        {
+            instructions.Visible = false;
+            this.Refresh();
         }
     }
 }
