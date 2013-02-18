@@ -17,13 +17,20 @@ namespace QwikShot.WinApp
         private ToolStripButton buttonInternet;
         private ToolStripButton buttonClose;
 
-        public ScreenShotRegionOverlay()
-        {
-            InitializeComponent();
+        private Bitmap fadedDesktopCapture;
 
+        private AppMain appMain;
+
+        public ScreenShotRegionOverlay(AppMain appMain)
+        {
+            this.appMain = appMain;
+            InitializeComponent();
         }
+        
         private void InitializeComponent()
         {
+            #region Creating and styling form controls
+
             this.SuspendLayout();
 
             toolStrip = new ToolStrip();
@@ -90,8 +97,12 @@ namespace QwikShot.WinApp
 
             toolStrip.ResumeLayout(false);
 
-            this.Controls.Add(toolStrip);
+            this.Controls.Add(toolStrip); 
+
+            #endregion
         }
+
+        #region toolbar button even handlers
 
         void buttonClose_Click(object sender, EventArgs e)
         {
@@ -117,12 +128,31 @@ namespace QwikShot.WinApp
         {
             throw new NotImplementedException();
         }
+
         internal void ResizeToBounds(Rectangle screenBounds)
         {
             this.Width = screenBounds.Width;
             this.Height = screenBounds.Height;
-            this.Left = screenBounds.X;
-            this.Top = screenBounds.Y;
+            this.Left = 0;
+            this.Top = 0;
+        }
+
+        #endregion
+
+        internal void CaptureRegion(Bitmap desktopCapture)
+        {
+
+            fadedDesktopCapture = new Bitmap(desktopCapture, desktopCapture.Width, desktopCapture.Height);
+
+            using (Graphics gfx = Graphics.FromImage(fadedDesktopCapture))
+            {
+                gfx.FillRectangle(new SolidBrush(Color.FromArgb(128, 192, 192, 192)), 0, 0, fadedDesktopCapture.Width, fadedDesktopCapture.Height);
+            }
+
+            this.Image = fadedDesktopCapture;
+
+
+            appMain.MakeActive();
         }
     }
 }

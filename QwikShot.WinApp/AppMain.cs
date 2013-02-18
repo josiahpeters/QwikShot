@@ -14,6 +14,7 @@ namespace QwikShot.WinApp
         {
             GlobalKeyHook.SetHook();
             Application.Run(new AppMain());
+            //Application.Run(new Settings());
         }
 
         private NotifyIcon systemTrayIcon;
@@ -24,33 +25,32 @@ namespace QwikShot.WinApp
 
         private Rectangle screenPositionBounds = Rectangle.Empty;
 
+        // Image references
+        private Bitmap desktopCapture;
+
         public AppMain()
         {
             // set up global screenshot shortcut callback
             GlobalKeyHook.KeyPress += GlobalKeyHook_KeyPress;
 
             // figure out the size of all potential monitors combined
-            CalculateScreenSize();
-
             InitializeComponent();
         }
-        private void CalculateScreenSize()
+        private void CalculateAndResizeToScreenSize()
         {
+            // calculate the total desktop size for all monitors
+            screenPositionBounds = ScreenHelper.GetTotalScreenSize();
 
-            foreach (Screen s in Screen.AllScreens)
-            {
-                screenPositionBounds = Rectangle.Union(screenPositionBounds, s.Bounds);
-
-                if (s.WorkingArea.X < screenPositionBounds.X)
-                {
-                    screenPositionBounds.X = s.WorkingArea.X;
-                    screenPositionBounds.Y = s.WorkingArea.Y;
-                }
-            }
+            // resize form to fit max screen size
+            this.ResizeToBounds(screenPositionBounds);
+            // resize overlay to fit max screen size
+            screenshotOverlay.ResizeToBounds(screenPositionBounds);
         }
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();            
+            this.components = new System.ComponentModel.Container();
+
+            this.KeyDown += AppMain_KeyDown;
 
             this.SuspendLayout();
 
@@ -71,13 +71,15 @@ namespace QwikShot.WinApp
 
             // allow the form to start on a monitor that isn't the main screen
             this.StartPosition = FormStartPosition.Manual;
-            ResizeToBounds(screenPositionBounds);
 
             // set up the overlay for holding and resizing the screenshot
-            screenshotOverlay = new ScreenShotRegionOverlay();
+            screenshotOverlay = new ScreenShotRegionOverlay(this);
 
             // add overlay to the form
             this.Controls.Add(screenshotOverlay);
+
+            // resize form and resize overlay to take up entire desktop
+            CalculateAndResizeToScreenSize();
 
             this.ResumeLayout(false);
         }
@@ -92,12 +94,62 @@ namespace QwikShot.WinApp
 
         private void CaptureScreenshot(Rectangle captureBounds)
         {
-            // 
+            // capture entire display
+            desktopCapture = ScreenHelper.CaptureScreenRegion(screenPositionBounds);
+
+            var regionCapture = true;
+
+            // show overlay
+            if (regionCapture)
+            {
+                screenshotOverlay.CaptureRegion(desktopCapture);
+            }
+            // save just the specified bounds
+            else
+                SaveBounds(captureBounds);
+            // do something with it
+        }
+
+        private void SaveBounds(Rectangle captureBounds)
+        {
+
+        }
+
+        internal void MakeActive()
+        {
+            this.Visible = true;
+            this.Focus();
+        }
+
+        private void CancelCapture()
+        {
+            this.Visible = false;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            // Hide form window
+            this.Visible = false;
+            // Remove from taskbar
+            this.ShowInTaskbar = false;
+
+            System.Threading.Thread.Sleep(1000);
+
+            ScreenHelper.GetActiveWindowBounds();
+
+            base.OnLoad(e);
+        }
+
+        private void AppMain_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+                CancelCapture();
         }
 
         void GlobalKeyHook_KeyPress(object sender, EventArgs e)
         {
             //throw new NotImplementedException();
+            CaptureScreenshot(screenPositionBounds);
         }
     }
 }
