@@ -47,6 +47,7 @@
     <Compile Include="AppMain.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="CustomToolStripRenderer.cs" />
     <Compile Include="GlobalKeyHook.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ScreenShotPictureBox.cs">
@@ -80,6 +81,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\image_link.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\cross.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\copying_and_distribution.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\network-share.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\globe_network.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

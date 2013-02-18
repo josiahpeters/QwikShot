@@ -20,10 +20,9 @@ namespace QwikShot.WinApp
         private System.ComponentModel.IContainer components;
         private ContextMenu systemTrayMenu;
 
-        private ScreenShotPictureBox screenshotOverlay;
+        private ScreenShotRegionOverlay screenshotOverlay;
 
-        private Rectangle screenBounds = Rectangle.Empty;
-        private Point leftMostScreenCoordinate = new Point(0,0);
+        private Rectangle screenPositionBounds = Rectangle.Empty;
 
         public AppMain()
         {
@@ -40,12 +39,12 @@ namespace QwikShot.WinApp
 
             foreach (Screen s in Screen.AllScreens)
             {
-                screenBounds = Rectangle.Union(screenBounds, s.Bounds);
+                screenPositionBounds = Rectangle.Union(screenPositionBounds, s.Bounds);
 
-                if (s.WorkingArea.X < leftMostScreenCoordinate.X)
+                if (s.WorkingArea.X < screenPositionBounds.X)
                 {
-                    leftMostScreenCoordinate.X = s.WorkingArea.X;
-                    leftMostScreenCoordinate.Y = s.WorkingArea.Y;
+                    screenPositionBounds.X = s.WorkingArea.X;
+                    screenPositionBounds.Y = s.WorkingArea.Y;
                 }
             }
         }
@@ -70,13 +69,30 @@ namespace QwikShot.WinApp
             this.Cursor = System.Windows.Forms.Cursors.Cross;
             this.Icon = new Icon(global::QwikShot.WinApp.Properties.Resources.icon_application, 32, 32);
 
+            // allow the form to start on a monitor that isn't the main screen
+            this.StartPosition = FormStartPosition.Manual;
+            ResizeToBounds(screenPositionBounds);
+
             // set up the overlay for holding and resizing the screenshot
-            screenshotOverlay = new ScreenShotPictureBox();
+            screenshotOverlay = new ScreenShotRegionOverlay();
 
             // add overlay to the form
             this.Controls.Add(screenshotOverlay);
 
             this.ResumeLayout(false);
+        }
+
+        private void ResizeToBounds(Rectangle screenBounds)
+        {
+            this.Width = screenBounds.Width;
+            this.Height = screenBounds.Height;
+            this.Left = screenBounds.X;
+            this.Top = screenBounds.Y;
+        }
+
+        private void CaptureScreenshot(Rectangle captureBounds)
+        {
+            // 
         }
 
         void GlobalKeyHook_KeyPress(object sender, EventArgs e)
