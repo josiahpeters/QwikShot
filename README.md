@@ -1,6 +1,6 @@
 QwikShot
 ========
-QwikShot is a Windows App for Sharing screenshots quickly and easily. You can capture a region of your screen like the snipping tool that ships with Windows 7 or capture the current focused application.
+QwikShot is a Windows App for Sharing screenshots quickly and easily. You can [capture a region](http://i.imgur.com/b4vUDzB.png) of your screen like the snipping tool that ships with Windows 7 or capture the current focused application.
 
 
 ### Current Features
